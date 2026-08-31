@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, ShiftRequest, SwapRequest, DailyShift, ShiftType } from '../types';
 import { api } from '../lib/api';
 import { addDays, startOfWeek, format } from 'date-fns';
@@ -80,12 +80,21 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
   // Let's allow swap with same department for now, or all specialists.
   const otherMembers = USERS.filter(u => u.role !== 'manager' && u.role !== 'fixed' && u.id !== user.id);
 
-  const is11to20Full = (dateStr: string) => {
-    return allRequests.some(r => 
-      r.userId !== user.id && 
-      r.shifts.find(s => s.date === dateStr && s.shiftType === '11:00-20:00')
-    );
-  };
+  const full11to20Dates = useMemo(() => {
+    const dates = new Set<string>();
+    allRequests.forEach(r => {
+      if (r.userId !== user.id) {
+        if (r.shifts) {
+          r.shifts.forEach(s => {
+            if (s.shiftType === '11:00-20:00') {
+              dates.add(s.date);
+            }
+          });
+        }
+      }
+    });
+    return dates;
+  }, [allRequests, user.id]);
 
   const handleShiftChange = (date: Date, newShift: ShiftType) => {
     if (isApproved || isEren) return;
@@ -356,12 +365,12 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
                           </button>
                           
                           <button
-                            disabled={isApproved || (is11to20Full(dateStr) && currentShift !== '11:00-20:00')}
+                            disabled={isApproved || (full11to20Dates.has(dateStr) && currentShift !== '11:00-20:00')}
                             onClick={() => handleShiftChange(date, '11:00-20:00')}
                             className={cn(
                               "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
                               currentShift === '11:00-20:00' ? "bg-sky-100 text-sky-800 border-sky-300" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              (isApproved || (is11to20Full(dateStr) && currentShift !== '11:00-20:00')) && "opacity-50 cursor-not-allowed"
+                              (isApproved || (full11to20Dates.has(dateStr) && currentShift !== '11:00-20:00')) && "opacity-50 cursor-not-allowed"
                             )}
                           >
                             <span>11:00 - 20:00</span>

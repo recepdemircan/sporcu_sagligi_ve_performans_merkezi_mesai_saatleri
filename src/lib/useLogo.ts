@@ -10,11 +10,11 @@ export function useLogo() {
 
   useEffect(() => {
     if (hasFetched) return;
+    hasFetched = true; // Set to true BEFORE async call to prevent race condition
     
     const fetchLogo = async () => {
       const dbLogo = await api.getLogo();
       cachedLogo = dbLogo;
-      hasFetched = true;
       setLogo(dbLogo);
       listeners.forEach(l => l(dbLogo));
     };
