@@ -52,7 +52,7 @@ export const api = {
     }
   },
 
-  async getShiftRequestsByWeek(weekId: string): Promise<ShiftRequest[]> {
+  async getShiftRequests(weekId: string): Promise<ShiftRequest[]> {
     const path = 'shiftRequests';
     try {
       const q = query(
@@ -118,7 +118,7 @@ export const api = {
       }
 
       // If accepted, we must swap the shifts
-      const sReqs = await this.getShiftRequestsByWeek(swap.weekId);
+      const sReqs = await this.getShiftRequests(swap.weekId);
       const senderReq = sReqs.find(r => r.userId === swap.senderUserId);
       const receiverReq = sReqs.find(r => r.userId === swap.receiverUserId);
 
