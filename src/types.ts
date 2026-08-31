@@ -1,9 +1,10 @@
-export type UserRole = 'manager' | 'old_team' | 'new_team';
+export type UserRole = 'manager' | 'senior' | 'fixed' | 'athletic' | 'health';
 
 export interface User {
   id: string;
   name: string;
   role: UserRole;
+  title?: string;
 }
 
 export type ShiftType = '08:00-17:00' | '11:00-20:00' | '08:00-20:00' | 'off';
@@ -11,6 +12,7 @@ export type ShiftType = '08:00-17:00' | '11:00-20:00' | '08:00-20:00' | 'off';
 export interface DailyShift {
   date: string; // YYYY-MM-DD format
   shiftType: ShiftType;
+  isExtraOvertime?: boolean; // True if '08:00-20:00'
 }
 
 export interface ShiftRequest {

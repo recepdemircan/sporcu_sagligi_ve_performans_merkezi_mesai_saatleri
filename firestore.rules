@@ -14,17 +14,17 @@ service cloud.firestore {
     
     // Auth is mocked in this app, so we allow writes but validate schema strictly
     function isValidShiftRequest(data) {
-      return data.keys().hasAll(['userId', 'weekId', 'shifts', 'status', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['id', 'userId', 'weekId', 'shifts', 'status', 'userName', 'submittedAt'])
         && data.keys().size() == 7
         && data.id is string
         && data.userId is string
         && data.weekId is string
+        && data.userName is string
         && data.shifts is list
         && data.shifts.size() <= 7
         && data.status is string
         && data.status in ['pending', 'approved', 'rejected']
-        && data.createdAt is string
-        && data.updatedAt is string;
+        && data.submittedAt is number;
     }
 
     match /system/{docId} {

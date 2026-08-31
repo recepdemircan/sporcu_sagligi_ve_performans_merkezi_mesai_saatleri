@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, ShiftRequest } from '../types';
+import { User, ShiftRequest, UserRole } from '../types';
 import { USERS } from '../lib/constants';
 import { api } from '../lib/api';
 import { addDays, startOfWeek, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Calendar, CheckCircle, XCircle, Download } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Download, RotateCcw, AlertTriangle, CalendarDays } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
-import { backupService } from '../lib/backupService';
-import { DatabaseBackup } from 'lucide-react';
+import { authenticateGoogleCalendar, syncShiftsToCalendar } from '../lib/calendar';
 
 interface ManagerDashboardProps {
   onLogout: () => void;
 }
+
+const DEPARTMENTS: { role: UserRole; name: string }[] = [
+  { role: 'athletic', name: 'Atletik Performans Departmanı' },
+  { role: 'health', name: 'Sağlık ve Destek Departmanı' },
+  { role: 'senior', name: 'Kıdemli Uzmanlar' },
+  { role: 'fixed', name: 'Sabit Vardiya Uzmanları' }
+];
 
 export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
   const nextWeekStart = startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 });
@@ -21,80 +27,127 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
   
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const printRef = useRef(null);
 
-  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `${format(nextWeekStart, 'dd-MMM-yyyy')}-calisma-plani`,
+    pageStyle: `
+      @page { size: landscape; margin: 10mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+      }
+    `
+  });
 
-  // Weekdays (Mon-Fri) and Saturday
-  const weekDays = Array.from({ length: 6 }).map((_, i) => addDays(nextWeekStart, i));
-
-  const fetchRequests = async () => {
+  const handleCalendarSync = async () => {
     try {
-      setLoading(true);
-      const reqs = await api.getShiftRequestsByWeek(weekId);
-      setRequests(reqs);
-    } catch (err) {
+      setSyncingCalendar(true);
+      const token = await authenticateGoogleCalendar();
+      const approvedRequests = requests.filter(r => r.status === 'approved');
+      
+      if (approvedRequests.length === 0) {
+        toast.error('Takvime eklenecek onaylı mesai bulunamadı.');
+        setSyncingCalendar(false);
+        return;
+      }
+
+      toast.loading('Takvime eşitleniyor...', { id: 'calendar-sync' });
+      
+      const count = await syncShiftsToCalendar(token, approvedRequests);
+      
+      toast.success(`${count} mesai Google Takvim'e eklendi!`, { id: 'calendar-sync' });
+    } catch (err: any) {
       console.error(err);
+      toast.error('Google Takvim eşitlemesi başarısız oldu.', { id: 'calendar-sync' });
+    } finally {
+      setSyncingCalendar(false);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      const data = await api.getShiftRequests(weekId);
+      setRequests(data);
+    } catch (error) {
+      toast.error('Veriler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRequests();
-
-    // Otomatik haftalık uyumluluk kontrolünü çalıştır (arkaplanda)
-    backupService.checkAndRunComplianceBackup().then((wasRun) => {
-      if (wasRun) {
-        toast.success("Haftalık otomatik uyumluluk kontrolü ve Firestore yedeği tamamlandı.", { duration: 5000 });
-      }
-    });
+    loadData();
+    const interval = setInterval(loadData, 10000);
+    return () => clearInterval(interval);
   }, [weekId]);
 
-  const handleManualBackup = async () => {
-    const toastId = toast.loading('Sistem yedeği hazırlanıyor...');
-    const success = await backupService.forceManualBackup();
-    if (success) {
-      toast.success('Sistem yedeği başarıyla indirildi!', { id: toastId });
-    } else {
-      toast.error('Yedekleme işlemi başarısız oldu.', { id: toastId });
-    }
-  };
-
-  const handleAction = async (id: string, status: 'approved' | 'rejected') => {
+  const handleAction = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
     try {
-      await api.updateShiftRequestStatus(id, status, weekId);
-      await fetchRequests(); // Refresh
-      if (status === 'approved') {
-        toast.success('Talep onaylandı!');
-      } else {
-        toast.success('Talep reddedildi.');
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('İşlem başarısız oldu.');
+      await api.updateShiftRequestStatus(id, status);
+      toast.success(status === 'approved' ? 'Talep onaylandı' : status === 'rejected' ? 'Talep reddedildi' : 'Durum geri alındı');
+      loadData();
+    } catch (error) {
+      toast.error('İşlem başarısız');
     }
   };
 
-  const getShiftColor = (shiftType: string) => {
-    switch (shiftType) {
-      case '08:00-17:00': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case '11:00-20:00': return 'bg-sky-100 text-sky-800 border-sky-200 shadow-sm ring-1 ring-sky-300';
-      case '08:00-20:00': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'off': return 'bg-rose-100 text-rose-800 border-rose-200';
-      default: return 'bg-slate-50 text-slate-400 border-slate-100';
+  const handleManualBackup = () => {
+    const dataStr = JSON.stringify(requests, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `mesai-yedek-${weekId}.json`;
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    toast.success('Yedek indirildi');
+  };
+
+  const weekDays = Array.from({ length: 6 }).map((_, i) => addDays(nextWeekStart, i));
+
+  const getShiftColor = (shift: string) => {
+    switch (shift) {
+      case '08:00-17:00': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case '11:00-20:00': return 'bg-sky-100 text-sky-700 border-sky-200';
+      case '08:00-20:00': return 'bg-amber-100 text-amber-700 border-amber-300 shadow-inner';
+      case 'off': return 'bg-rose-100 text-rose-700 border-rose-200 opacity-60';
+      default: return 'bg-slate-100 text-slate-500 border-slate-200';
     }
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Haftalik_Plan_${weekId}`,
-    pageStyle: `
-      @page { size: landscape; margin: 10mm; }
-      @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  const checkMondayRule = () => {
+    const mondayStr = format(weekDays[0], 'yyyy-MM-dd');
+    const recepReq = requests.find(r => r.userName === 'Recep Demircan');
+    const ademcanReq = requests.find(r => r.userName === 'Ademcan Salep');
+
+    const recepShift = recepReq?.shifts.find(s => s.date === mondayStr)?.shiftType;
+    const ademcanShift = ademcanReq?.shifts.find(s => s.date === mondayStr)?.shiftType;
+
+    const recepValid = recepShift === '11:00-20:00' || recepShift === '08:00-20:00';
+    const ademcanValid = ademcanShift === '11:00-20:00' || ademcanShift === '08:00-20:00';
+
+    return recepValid || ademcanValid;
+  };
+
+  const isMondayRuleSatisfied = checkMondayRule();
+  // We only show warning if there are pending requests, or if approved but missing the rule.
+  const showMondayWarning = !isMondayRuleSatisfied;
+
+  const approveAll = async () => {
+    if (!isMondayRuleSatisfied) {
+      toast.error('Pazartesi kuralı sağlanmadan tümünü onaylayamazsınız!');
+      return;
+    }
+    if (window.confirm('Tüm bekleyen talepler onaylanacak. Emin misiniz?')) {
+      const pendingReqs = requests.filter(r => r.status === 'pending');
+      for (const req of pendingReqs) {
+        await api.updateShiftRequestStatus(req.id, 'approved');
       }
-    `
-  });
+      toast.success('Tüm talepler onaylandı');
+      loadData();
+    }
+  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
@@ -102,158 +155,159 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm print:hidden">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm print:hidden">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Yönetici Paneli</h1>
           <p className="text-xs font-semibold text-slate-500 mt-0.5">Mahsum Akikol</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full sm:w-auto">
+          <button 
+            onClick={handleCalendarSync}
+            disabled={syncingCalendar}
+            className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 shadow-sm hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>{syncingCalendar ? 'Eşitleniyor...' : 'Takvime Aktar'}</span>
+          </button>
+          
           <button 
             onClick={handleManualBackup}
             className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
           >
-            <DatabaseBackup className="w-4 h-4" />
-            Yedek Al
-          </button>
-          <button 
-            onClick={() => handlePrint()}
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-          >
             <Download className="w-4 h-4" />
-            PDF İndir
+            <span>Yedek Al</span>
+          </button>
+          
+          <button 
+            onClick={handlePrint}
+            className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+          >
+            Çıktı Al
           </button>
           <button 
             onClick={onLogout}
-            className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+            className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors self-end sm:self-auto"
           >
             Çıkış Yap
           </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6" ref={printRef}>
-        {/* Print Header (Visible mostly on print or top of page) */}
-        <div className="mb-6 flex items-center gap-3">
-          <Calendar className="w-6 h-6 text-slate-900" />
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {format(nextWeekStart, 'dd MMMM yyyy', { locale: tr })} Haftası Çalışma Planı
-          </h2>
+      <main className="max-w-7xl mx-auto p-4 sm:p-6" ref={printRef}>
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-6 h-6 text-slate-900" />
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+              {format(nextWeekStart, 'dd MMMM yyyy', { locale: tr })} Haftası Çalışma Planı
+            </h2>
+          </div>
+          <button onClick={approveAll} className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow hover:bg-emerald-700 print:hidden">
+            Tümünü Onayla
+          </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-r border-slate-200 w-48">Personel</th>
-                  {weekDays.map(date => (
-                    <th key={date.toString()} className="px-2 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center min-w-[100px]">
-                      {format(date, 'EEEE', { locale: tr })}<br/>
-                      <span className="text-[9px] font-medium text-slate-400">{format(date, 'dd MMM')}</span>
-                    </th>
-                  ))}
-                  <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center w-32 print:hidden">Durum / İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {USERS.filter(u => u.role === 'old_team').map(user => {
-                  const req = requests.find(r => r.userId === user.id);
-                  return (
-                    <tr key={user.id} className="group hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 border-r border-slate-200">
-                        <div className="text-sm font-bold text-slate-900">{user.name}</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Eski Ekip</div>
-                      </td>
-                      {weekDays.map(date => {
-                        const dateStr = format(date, 'yyyy-MM-dd');
-                        const shift = req?.shifts.find(s => s.date === dateStr);
+        {showMondayWarning && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-6 flex items-start gap-3 shadow-sm print:hidden">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-sm">Kritik Kural İhlali: Pazartesi Akşamı (Eren Çelik İzinli)</h3>
+              <p className="text-xs mt-1">Eren Çelik Pazartesi günleri izinli olduğu için, Atletik Performans departmanından <strong>Recep Demircan</strong> veya <strong>Ademcan Salep</strong>'in Pazartesi günü için mutlaka <strong>11:00-20:00</strong> veya <strong>08:00-20:00</strong> vardiyasını seçip onaylanması zorunludur.</p>
+            </div>
+          </div>
+        )}
+
+        {DEPARTMENTS.map((dept) => {
+          const deptUsers = USERS.filter(u => u.role === dept.role);
+          if (deptUsers.length === 0) return null;
+
+          return (
+            <div key={dept.role} className="mb-8">
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-4">{dept.name}</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-r border-slate-200 min-w-[150px] sticky left-0 bg-slate-50 z-10">Personel</th>
+                        {weekDays.map(date => (
+                          <th key={date.toString()} className="px-2 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center min-w-[100px]">
+                            {format(date, 'EEEE', { locale: tr })}<br/>
+                            <span className="text-[9px] font-medium text-slate-400">{format(date, 'dd MMM')}</span>
+                          </th>
+                        ))}
+                        <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center min-w-[80px]">Ekstra<br/>Mesai</th>
+                        <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center w-32 print:hidden">Durum / İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {deptUsers.map(user => {
+                        const req = requests.find(r => r.userId === user.id);
+                        
+                        let overtimeHours = 0;
+                        if (req) {
+                          overtimeHours = req.shifts.filter(s => s.shiftType === '08:00-20:00').length * 3;
+                        }
+
                         return (
-                          <td key={dateStr} className="p-1">
-                            {shift ? (
-                              <div className={cn("h-10 text-[10px] font-bold rounded flex items-center justify-center border", getShiftColor(shift.shiftType))}>
-                                {shift.shiftType === 'off' ? 'İZİN' : shift.shiftType}
-                              </div>
-                            ) : (
-                              <div className="h-10 bg-slate-50 text-slate-300 text-[10px] font-bold rounded flex items-center justify-center border border-transparent">-</div>
-                            )}
-                          </td>
+                          <tr key={user.id} className="group hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 border-r border-slate-200 min-w-[150px] sticky left-0 bg-white group-hover:bg-slate-50 z-10">
+                              <div className="text-sm font-bold text-slate-900">{user.name}</div>
+                              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{user.title}</div>
+                            </td>
+                            {weekDays.map(date => {
+                              const dateStr = format(date, 'yyyy-MM-dd');
+                              const shift = req?.shifts.find(s => s.date === dateStr);
+                              return (
+                                <td key={dateStr} className="p-1">
+                                  {shift ? (
+                                    <div className={cn("h-10 text-[10px] font-bold rounded flex items-center justify-center border", getShiftColor(shift.shiftType))}>
+                                      {shift.shiftType === 'off' ? 'İZİN' : shift.shiftType}
+                                    </div>
+                                  ) : (
+                                    <div className="h-10 bg-slate-50 text-slate-300 text-[10px] font-bold rounded flex items-center justify-center border border-transparent">-</div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="px-4 py-3 text-center border-l border-slate-200 bg-amber-50/30">
+                              <div className="text-sm font-bold text-amber-700">{overtimeHours > 0 ? `+${overtimeHours} Saat` : '-'}</div>
+                            </td>
+                            <td className="p-4 print:hidden border-l border-slate-200">
+                              {!req ? (
+                                <span className="text-slate-400 text-sm">Girilmedi</span>
+                              ) : req.status === 'pending' ? (
+                                <div className="flex gap-2 justify-center">
+                                  <button onClick={() => handleAction(req.id, 'approved')} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded" title="Onayla">
+                                    <CheckCircle className="w-5 h-5" />
+                                  </button>
+                                  <button onClick={() => handleAction(req.id, 'rejected')} className="text-rose-600 hover:bg-rose-50 p-1.5 rounded" title="Reddet">
+                                    <XCircle className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex justify-center items-center gap-2">
+                                  <span className={cn(
+                                    "px-2.5 py-1 rounded-full text-[10px] font-bold",
+                                    req.status === 'approved' ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                                  )}>
+                                    {req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                                  </span>
+                                  <button onClick={() => handleAction(req.id, 'pending')} className="text-slate-400 hover:text-slate-600 p-1" title="Kararı Geri Al">
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
                         );
                       })}
-                      <td className="p-4 print:hidden">
-                        {!req ? (
-                          <span className="text-slate-400 text-sm">Girilmedi</span>
-                        ) : req.status === 'pending' ? (
-                          <div className="flex gap-2 justify-center">
-                            <button onClick={() => handleAction(req.id, 'approved')} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded" title="Onayla">
-                              <CheckCircle className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleAction(req.id, 'rejected')} className="text-rose-600 hover:bg-rose-50 p-1.5 rounded" title="Reddet">
-                              <XCircle className="w-5 h-5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-center">
-                            <span className={cn(
-                              "px-2.5 py-1 rounded-full text-xs font-bold",
-                              req.status === 'approved' ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                            )}>
-                              {req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="mt-8 mb-6">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-4">Yeni Ekip (Sabit Mesai)</h2>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-4 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-r border-slate-200 w-48">Personel</th>
-                  {weekDays.map(date => (
-                    <th key={date.toString()} className="px-2 py-4 text-[11px] uppercase tracking-wider text-slate-500 font-bold text-center min-w-[100px]">
-                      {format(date, 'EEEE', { locale: tr })}
-                    </th>
-                  ))}
-                  <th className="w-32 print:hidden"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {USERS.filter(u => u.role === 'new_team').map((user, index) => (
-                  <tr key={user.id} className="group hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 border-r border-slate-200">
-                      <div className="text-sm font-bold text-slate-900">{user.name}</div>
-                      <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-tight">Yeni Ekip</div>
-                    </td>
-                    {weekDays.map((date, dateIndex) => {
-                      const isSaturday = date.getDay() === 6;
-                      const isOffDay = dateIndex === index && !isSaturday;
-                      return (
-                        <td key={date.toString()} className="p-1">
-                           {isSaturday ? (
-                             <div className="h-10 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold rounded flex items-center justify-center opacity-70">08:00-17:00</div>
-                           ) : isOffDay ? (
-                             <div className="h-10 bg-rose-50 text-rose-400 border border-rose-100 text-[10px] font-bold rounded flex items-center justify-center opacity-70">İZİN</div>
-                           ) : (
-                             <div className="h-10 bg-sky-50 text-sky-600 border border-sky-100 text-[10px] font-bold rounded flex items-center justify-center opacity-70">11:00-20:00</div>
-                           )}
-                        </td>
-                      );
-                    })}
-                    <td className="print:hidden"></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </main>
     </div>
   );

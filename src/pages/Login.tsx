@@ -69,16 +69,26 @@ export function Login({ onLogin }: LoginProps) {
               <option value="">-- Lütfen Seçiniz --</option>
               <optgroup label="Yönetim">
                 {USERS.filter(u => u.role === 'manager').map(u => (
-                  <option key={u.id} value={u.id}>{u.name} (Yönetici)</option>
+                  <option key={u.id} value={u.id}>{u.name} ({u.title})</option>
                 ))}
               </optgroup>
-              <optgroup label="Eski Ekip (Talep Oluşturanlar)">
-                {USERS.filter(u => u.role === 'old_team').map(u => (
+              <optgroup label="Kıdemli Uzmanlar">
+                {USERS.filter(u => u.role === 'senior').map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </optgroup>
-              <optgroup label="Yeni Ekip (Sabit Mesaililer)">
-                {USERS.filter(u => u.role === 'new_team').map(u => (
+              <optgroup label="Sabit Vardiya Uzmanları">
+                {USERS.filter(u => u.role === 'fixed').map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Atletik Performans Departmanı">
+                {USERS.filter(u => u.role === 'athletic').map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Sağlık ve Destek Departmanı">
+                {USERS.filter(u => u.role === 'health').map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </optgroup>
