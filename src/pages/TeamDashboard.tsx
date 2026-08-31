@@ -181,9 +181,14 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Hoş geldin, {user.name}</h1>
-          <p className="text-xs font-medium text-slate-500 mt-0.5">{user.title} | Haftalık Mesai Ekranı</p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="İBB Spor İstanbul Logo" className="h-8 sm:h-10 object-contain hidden sm:block" onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }} />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Hoş geldin, {user.name}</h1>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{user.title} | Haftalık Mesai Ekranı</p>
+          </div>
         </div>
         <button 
           onClick={onLogout}

@@ -156,9 +156,14 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm print:hidden">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Yönetici Paneli</h1>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Mahsum Akikol</p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="İBB Spor İstanbul Logo" className="h-8 sm:h-10 object-contain" onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }} />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Yönetici Paneli</h1>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">Mahsum Akikol</p>
+          </div>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full sm:w-auto">
           <button 

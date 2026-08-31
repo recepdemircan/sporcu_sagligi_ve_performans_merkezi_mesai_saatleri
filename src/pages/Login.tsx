@@ -41,7 +41,11 @@ export function Login({ onLogin }: LoginProps) {
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-800">
       <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8">
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+          <img src="/logo.png" alt="İBB Spor İstanbul Logo" className="h-16 object-contain mb-4" onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+          }} />
+          <div className="hidden w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
             <UserCircle2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
