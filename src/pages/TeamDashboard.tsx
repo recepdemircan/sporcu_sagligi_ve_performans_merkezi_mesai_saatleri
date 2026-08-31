@@ -36,7 +36,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
     try {
       const [reqs, swps] = await Promise.all([
         api.getShiftRequests(weekId),
-        api.getSwapRequests(weekId)
+        api.getSwapRequests(user.id, weekId)
       ]);
       setAllRequests(reqs);
       setSwaps(swps);
@@ -146,7 +146,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
     
     try {
       const swapId = `${weekId}-${user.id}-${swapReceiver}-${Date.now()}`;
-      await api.saveSwapRequest({
+      await api.createSwapRequest({
         id: swapId,
         weekId,
         date: swapDate,
@@ -165,7 +165,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
 
   const handleRespondToSwap = async (swap: SwapRequest, status: 'accepted' | 'rejected') => {
     try {
-      await api.respondToSwap(swap.id, status, user.id);
+      await api.respondToSwap(swap, status);
       toast.success(status === 'accepted' ? 'Takas kabul edildi!' : 'Takas reddedildi');
       loadData();
     } catch (error) {

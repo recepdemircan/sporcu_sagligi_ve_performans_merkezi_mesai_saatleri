@@ -87,7 +87,7 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
 
   const handleAction = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
     try {
-      await api.updateShiftRequestStatus(id, status);
+      await api.updateShiftRequestStatus(id, status as 'approved' | 'rejected', weekId);
       toast.success(status === 'approved' ? 'Talep onaylandı' : status === 'rejected' ? 'Talep reddedildi' : 'Durum geri alındı');
       loadData();
     } catch (error) {
@@ -144,7 +144,7 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
     if (window.confirm('Tüm bekleyen talepler onaylanacak. Emin misiniz?')) {
       const pendingReqs = requests.filter(r => r.status === 'pending');
       for (const req of pendingReqs) {
-        await api.updateShiftRequestStatus(req.id, 'approved');
+        await api.updateShiftRequestStatus(req.id, 'approved', weekId);
       }
       toast.success('Tüm talepler onaylandı');
       loadData();
