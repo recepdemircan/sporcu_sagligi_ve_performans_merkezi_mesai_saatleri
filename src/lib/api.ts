@@ -60,7 +60,13 @@ export const api = {
         where('weekId', '==', weekId)
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as ShiftRequest);
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data() as ShiftRequest;
+        return {
+          ...data,
+          shifts: data.shifts || []
+        };
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, path);
       return [];

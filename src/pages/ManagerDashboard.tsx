@@ -33,7 +33,7 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
   const printRef = useRef(null);
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `${format(nextWeekStart, 'dd-MMM-yyyy')}-calisma-plani`,
     pageStyle: `
       @page { size: landscape; margin: 10mm; }

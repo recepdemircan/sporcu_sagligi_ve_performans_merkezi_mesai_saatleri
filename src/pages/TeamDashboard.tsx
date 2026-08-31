@@ -42,7 +42,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
       setSwaps(swps);
 
       const existingReq = reqs.find(r => r.userId === user.id);
-      if (existingReq) {
+      if (existingReq && existingReq.shifts && existingReq.shifts.length > 0) {
         setShifts(existingReq.shifts);
       } else {
         if (isEren) {
