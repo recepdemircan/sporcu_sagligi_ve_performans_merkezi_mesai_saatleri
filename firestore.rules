@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // Auth is mocked in this app, so we allow writes but validate schema strictly
+    function isValidShiftRequest(data) {
+      return data.keys().hasAll(['userId', 'weekId', 'shifts', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 7
+        && data.id is string
+        && data.userId is string
+        && data.weekId is string
+        && data.shifts is list
+        && data.shifts.size() <= 7
+        && data.status is string
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    match /system/{docId} {
+      allow read, write: if true;
+    }
+
+    match /swapRequests/{swapId} {
+      allow read, write: if true;
+    }
+
+    match /shiftRequests/{requestId} {
+      allow read: if true;
+      allow create: if isValidId(requestId) && isValidShiftRequest(incoming());
+      allow update: if isValidId(requestId) 
+                    && isValidShiftRequest(incoming()) 
+                    && incoming().userId == existing().userId
+                    && incoming().weekId == existing().weekId;
+      allow delete: if false;
+    }
+  }
+}
