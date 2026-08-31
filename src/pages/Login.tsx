@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { USERS, MANAGER_PIN } from '../lib/constants';
 import { User } from '../types';
 import { LogIn, UserCircle2 } from 'lucide-react';
+import { useLogo } from '../lib/useLogo';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -11,6 +12,7 @@ export function Login({ onLogin }: LoginProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const { logo } = useLogo();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,13 +43,13 @@ export function Login({ onLogin }: LoginProps) {
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-800">
       <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8">
         <div className="flex flex-col items-center mb-8 text-center">
-          <img src="/logo.png" alt="İBB Spor İstanbul Logo" className="h-16 object-contain mb-4" onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-          }} />
-          <div className="hidden w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
-            <UserCircle2 className="w-7 h-7 text-white" />
-          </div>
+          {logo ? (
+            <img src={logo} alt="İBB Spor İstanbul Logo" className="h-16 object-contain mb-4" />
+          ) : (
+            <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+              <UserCircle2 className="w-7 h-7 text-white" />
+            </div>
+          )}
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Çırpıcı Sporcu Sağlığı Merkezi
           </h1>

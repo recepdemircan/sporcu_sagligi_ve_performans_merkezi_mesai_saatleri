@@ -7,6 +7,7 @@ import { Calendar, ArrowLeftRight, Check, X, Send, AlertTriangle, Clock } from '
 import { cn } from '../lib/utils';
 import { USERS } from '../lib/constants';
 import toast from 'react-hot-toast';
+import { useLogo } from '../lib/useLogo';
 
 interface TeamDashboardProps {
   user: User;
@@ -27,6 +28,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [swapDate, setSwapDate] = useState<string | null>(null);
   const [swapReceiver, setSwapReceiver] = useState<string>('');
+  const { logo } = useLogo();
 
   const isEren = user.name === 'Eren Çelik';
 
@@ -182,9 +184,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="İBB Spor İstanbul Logo" className="h-8 sm:h-10 object-contain hidden sm:block" onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }} />
+          {logo && <img src={logo} alt="İBB Spor İstanbul Logo" className="h-8 sm:h-10 object-contain hidden sm:block" />}
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900">Hoş geldin, {user.name}</h1>
             <p className="text-xs font-medium text-slate-500 mt-0.5">{user.title} | Haftalık Mesai Ekranı</p>

@@ -143,6 +143,29 @@ export const api = {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${path}/${swap.id}`);
     }
+  },
+
+  async getLogo(): Promise<string | null> {
+    try {
+      const q = query(collection(db, 'settings'), where('id', '==', 'logo'));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return snapshot.docs[0].data().base64 || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Logo alınamadı', error);
+      return null;
+    }
+  },
+
+  async saveLogo(base64: string): Promise<void> {
+    try {
+      const logoRef = doc(db, 'settings', 'logo');
+      await setDoc(logoRef, { id: 'logo', base64 });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/logo');
+    }
   }
 };
 
