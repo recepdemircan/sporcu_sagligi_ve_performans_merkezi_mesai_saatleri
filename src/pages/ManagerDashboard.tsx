@@ -132,6 +132,18 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
     }
   };
 
+  const clearRequests = async () => {
+    if (window.confirm('Bu haftaya ait TÜM personel talepleri silinecek. Emin misiniz?')) {
+      try {
+        await api.clearWeekRequests(weekId);
+        toast.success('Tüm talepler silindi');
+        loadData();
+      } catch (error) {
+        toast.error('Talepler silinirken hata oluştu');
+      }
+    }
+  };
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -202,9 +214,14 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
               {format(nextWeekStart, 'dd MMMM yyyy', { locale: tr })} Haftası Çalışma Planı
             </h2>
           </div>
-          <button onClick={approveAll} className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow hover:bg-emerald-700 print:hidden">
-            Tümünü Onayla
-          </button>
+          <div className="flex gap-2">
+            <button onClick={clearRequests} className="px-4 py-2 bg-rose-600 text-white text-sm font-bold rounded-lg shadow hover:bg-rose-700 print:hidden">
+              Talepleri Temizle
+            </button>
+            <button onClick={approveAll} className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow hover:bg-emerald-700 print:hidden">
+              Tümünü Onayla
+            </button>
+          </div>
         </div>
 
         {showMondayWarning && (

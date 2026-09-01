@@ -6,6 +6,7 @@ import {
   query, 
   where,
   updateDoc,
+  writeBatch,
   limit
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -82,6 +83,21 @@ export const api = {
       await updateDoc(requestRef, { status });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${path}/${id}`);
+    }
+  },
+
+  async clearWeekRequests(weekId: string): Promise<void> {
+    const path = 'shiftRequests';
+    try {
+      const q = query(collection(db, path), where('weekId', '==', weekId));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
     }
   },
 
