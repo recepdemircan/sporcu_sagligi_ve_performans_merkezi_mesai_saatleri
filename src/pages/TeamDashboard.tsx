@@ -281,7 +281,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
         });
         
         if (mondayShift && mondayShift.shiftType !== 'off') {
-          toast.error('Kıdemli Fizyoterapistler Cumartesi çalıştığında izin gününü kesinlikle Pazartesi kullanmalıdır!');
+          toast.error('Fizyoterapi ekibi Cumartesi çalıştığında izin gününü kesinlikle Pazartesi kullanmalıdır!');
           return false;
         }
       } else {
