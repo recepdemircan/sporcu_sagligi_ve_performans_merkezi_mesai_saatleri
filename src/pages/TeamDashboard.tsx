@@ -274,13 +274,25 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
     });
 
     if (hasSaturdayShift) {
-      const weekdayOffs = shifts.filter(s => {
-        const d = new Date(s.date);
-        return d.getDay() >= 1 && d.getDay() <= 5 && s.shiftType === 'off';
-      });
-      if (weekdayOffs.length === 0) {
-        toast.error('Cumartesi çalışıyorsanız, hafta içi en az 1 gün izin seçmelisiniz!');
-        return false;
+      if (user.role === 'senior') {
+        const mondayShift = shifts.find(s => {
+          const d = new Date(s.date);
+          return d.getDay() === 1;
+        });
+        
+        if (mondayShift && mondayShift.shiftType !== 'off') {
+          toast.error('Kıdemli Fizyoterapistler Cumartesi çalıştığında izin gününü kesinlikle Pazartesi kullanmalıdır!');
+          return false;
+        }
+      } else {
+        const weekdayOffs = shifts.filter(s => {
+          const d = new Date(s.date);
+          return d.getDay() >= 1 && d.getDay() <= 5 && s.shiftType === 'off';
+        });
+        if (weekdayOffs.length === 0) {
+          toast.error('Cumartesi çalışıyorsanız, hafta içi en az 1 gün izin seçmelisiniz!');
+          return false;
+        }
       }
     }
     return true;
@@ -444,7 +456,11 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
                 <ul className="list-disc pl-4 space-y-1">
                   <li>Hafta içi saatlerinden sadece birini seçebilirsiniz.</li>
                   <li>Aynı gün içinde 11:00 - 20:00 vardiyasını departmanlardan sadece 1 kişi seçebilir.</li>
-                  <li>Cumartesi (08:00-17:00) çalışıyorsanız, hafta içi 1 gün izin seçmelisiniz.</li>
+                  {user.role === 'senior' ? (
+                    <li>Cumartesi (08:00-17:00) çalışıyorsanız, izninizi mutlaka <strong>Pazartesi</strong> günü kullanmalısınız.</li>
+                  ) : (
+                    <li>Cumartesi (08:00-17:00) çalışıyorsanız, hafta içi 1 gün izin seçmelisiniz.</li>
+                  )}
                   {user.role !== 'fixed' && <li><strong>+3 Saat Ekstra Mesai</strong> seçeneği ile mesai kazancı sağlayabilirsiniz.</li>}
                 </ul>
               </div>
