@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, ShiftRequest, UserRole } from '../types';
 import { USERS } from '../lib/constants';
 import { api } from '../lib/api';
@@ -118,8 +118,16 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
     }
   };
 
+  const requestsMap = useMemo(() => {
+    const map = new Map<string, ShiftRequest>();
+    requests.forEach(r => map.set(r.userId, r));
+    return map;
+  }, [requests]);
+
   const checkMondayRule = () => {
     const mondayStr = format(weekDays[0], 'yyyy-MM-dd');
+    
+    // Recep Demircan ID or just search in requests
     const recepReq = requests.find(r => r.userName === 'Recep Demircan');
     const ademcanReq = requests.find(r => r.userName === 'Ademcan Salep');
 
@@ -270,11 +278,13 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {deptUsers.map(user => {
-                        const req = requests.find(r => r.userId === user.id);
+                        const req = requestsMap.get(user.id);
                         
                         let overtimeHours = 0;
+                        let userShiftMap = new Map();
                         if (req) {
                           overtimeHours = req.shifts.filter(s => s.shiftType === '08:00-20:00').length * 3;
+                          req.shifts.forEach(s => userShiftMap.set(s.date, s));
                         }
 
                         return (
@@ -285,7 +295,7 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
                             </td>
                             {weekDays.map(date => {
                               const dateStr = format(date, 'yyyy-MM-dd');
-                              const shift = req?.shifts.find(s => s.date === dateStr);
+                              const shift = userShiftMap.get(dateStr);
                               return (
                                 <td key={dateStr} className="p-1">
                                   {shift ? (

@@ -14,10 +14,163 @@ interface TeamDashboardProps {
   onLogout: () => void;
 }
 
+interface DayCardProps {
+  date: Date;
+  dateStr: string;
+  isSaturday: boolean;
+  currentShift: ShiftType;
+  isEren: boolean;
+  isApproved: boolean;
+  is11to20Full: boolean;
+  userRole: User['role'];
+  onShiftChange: (dateStr: string, newShift: ShiftType) => void;
+  onSwapClick: (dateStr: string) => void;
+}
+
+const DayCard = React.memo(({
+  date,
+  dateStr,
+  isSaturday,
+  currentShift,
+  isEren,
+  isApproved,
+  is11to20Full,
+  userRole,
+  onShiftChange,
+  onSwapClick
+}: DayCardProps) => {
+  return (
+    <div className="min-w-[85vw] sm:min-w-0 snap-center flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-200 hover:shadow-md">
+      <div className="px-3 py-3 border-b border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center">
+        <p className="font-bold text-slate-900 tracking-tight text-sm uppercase">
+          {format(date, 'EEEE', { locale: tr })}
+        </p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
+          {format(date, 'dd MMM', { locale: tr })}
+        </p>
+      </div>
+      
+      <div className="p-3 flex-1 flex flex-col gap-2">
+        {isEren ? (
+            <div className={cn(
+              "w-full px-2 py-3 rounded-lg border text-xs font-bold text-center flex flex-col items-center justify-center gap-1",
+              currentShift === 'off' ? "bg-rose-100 text-rose-800 border-rose-200" : "bg-sky-100 text-sky-800 border-sky-200"
+            )}>
+              <span>{currentShift === 'off' ? 'İZİNLİ' : currentShift}</span>
+              <span className="text-[9px] font-semibold opacity-70">Sabit Vardiya</span>
+            </div>
+        ) : isSaturday ? (
+          <>
+            <button
+              disabled={isApproved}
+              onClick={() => onShiftChange(dateStr, '08:00-17:00')}
+              className={cn(
+                "w-full px-2 py-3 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1",
+                currentShift === '08:00-17:00' 
+                  ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                isApproved && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span>08:00 - 17:00</span>
+              <span className="text-[10px] font-semibold opacity-70">Çalışacağım</span>
+            </button>
+            <button
+              disabled={isApproved}
+              onClick={() => onShiftChange(dateStr, 'off')}
+              className={cn(
+                "w-full px-2 py-3 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1",
+                currentShift === 'off' 
+                  ? "bg-rose-100 text-rose-800 border-rose-200" 
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                isApproved && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              İzinliyim
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              disabled={isApproved}
+              onClick={() => onShiftChange(dateStr, '08:00-17:00')}
+              className={cn(
+                "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
+                currentShift === '08:00-17:00' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                isApproved && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span>08:00 - 17:00</span>
+              <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">Normal Mesai</span>
+            </button>
+            
+            <button
+              disabled={isApproved || (is11to20Full && currentShift !== '11:00-20:00')}
+              onClick={() => onShiftChange(dateStr, '11:00-20:00')}
+              className={cn(
+                "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
+                currentShift === '11:00-20:00' ? "bg-sky-100 text-sky-800 border-sky-300" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                (isApproved || (is11to20Full && currentShift !== '11:00-20:00')) && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span>11:00 - 20:00</span>
+              <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">Geç Mesai</span>
+            </button>
+
+            {userRole !== 'fixed' && (
+              <button
+                disabled={isApproved}
+                onClick={() => onShiftChange(dateStr, '08:00-20:00')}
+                className={cn(
+                  "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 relative overflow-hidden",
+                  currentShift === '08:00-20:00' ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                  isApproved && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <span>08:00 - 20:00</span>
+                <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">+3 Saat Ekstra</span>
+              </button>
+            )}
+
+            <button
+              disabled={isApproved}
+              onClick={() => onShiftChange(dateStr, 'off')}
+              className={cn(
+                "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
+                currentShift === 'off' ? "bg-rose-100 text-rose-800 border-rose-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
+                isApproved && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span>İzinli (Off)</span>
+            </button>
+          </>
+        )}
+
+        {isApproved && (
+          <div className="mt-2 pt-2 border-t border-slate-100">
+            <button
+              onClick={() => onSwapClick(dateStr)}
+              className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded border border-indigo-200 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors"
+            >
+              <ArrowLeftRight className="w-3 h-3" />
+              Takas Teklif Et
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
-  const nextWeekStart = startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 6 }).map((_, i) => addDays(nextWeekStart, i));
-  const weekId = `${format(nextWeekStart, 'yyyy')}-W${format(nextWeekStart, 'I')}`;
+  const { nextWeekStart, weekDays, weekId } = useMemo(() => {
+    const start = startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 });
+    return {
+      nextWeekStart: start,
+      weekDays: Array.from({ length: 6 }).map((_, i) => addDays(start, i)),
+      weekId: `${format(start, 'yyyy')}-W${format(start, 'I')}`
+    };
+  }, []);
 
   const [shifts, setShifts] = useState<DailyShift[]>([]);
   const [allRequests, setAllRequests] = useState<ShiftRequest[]>([]);
@@ -28,6 +181,12 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [swapDate, setSwapDate] = useState<string | null>(null);
   const [swapReceiver, setSwapReceiver] = useState<string>('');
+
+  const handleSwapClick = React.useCallback((dStr: string) => {
+    setSwapDate(dStr);
+    setSwapModalOpen(true);
+  }, []);
+
   const { logo } = useLogo();
 
   const isEren = user.name === 'Eren Çelik';
@@ -96,11 +255,16 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
     return dates;
   }, [allRequests, user.id]);
 
-  const handleShiftChange = (date: Date, newShift: ShiftType) => {
+  const shiftsMap = useMemo(() => {
+    const map = new Map<string, ShiftType>();
+    shifts.forEach(s => map.set(s.date, s.shiftType));
+    return map;
+  }, [shifts]);
+
+  const handleShiftChange = React.useCallback((dateStr: string, newShift: ShiftType) => {
     if (isApproved || isEren) return;
-    const dateStr = format(date, 'yyyy-MM-dd');
     setShifts(prev => prev.map(s => s.date === dateStr ? { ...s, shiftType: newShift } : s));
-  };
+  }, [isApproved, isEren]);
 
   const validateShifts = () => {
     if (isEren) return true; // Fixed schedule doesn't need validation
@@ -297,128 +461,22 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
               {weekDays.map(date => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const isSaturday = date.getDay() === 6;
-                const currentShift = shifts.find(s => s.date === dateStr)?.shiftType || '08:00-17:00';
+                const currentShift = shiftsMap.get(dateStr) || '08:00-17:00';
                 
                 return (
-                  <div key={dateStr} className="min-w-[85vw] sm:min-w-0 snap-center flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-200 hover:shadow-md">
-                    <div className="px-3 py-3 border-b border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-center">
-                      <p className="font-bold text-slate-900 tracking-tight text-sm uppercase">
-                        {format(date, 'EEEE', { locale: tr })}
-                      </p>
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
-                        {format(date, 'dd MMM', { locale: tr })}
-                      </p>
-                    </div>
-                    
-                    <div className="p-3 flex-1 flex flex-col gap-2">
-                      {isEren ? (
-                         <div className={cn(
-                           "w-full px-2 py-3 rounded-lg border text-xs font-bold text-center flex flex-col items-center justify-center gap-1",
-                           currentShift === 'off' ? "bg-rose-100 text-rose-800 border-rose-200" : "bg-sky-100 text-sky-800 border-sky-200"
-                         )}>
-                           <span>{currentShift === 'off' ? 'İZİNLİ' : currentShift}</span>
-                           <span className="text-[9px] font-semibold opacity-70">Sabit Vardiya</span>
-                         </div>
-                      ) : isSaturday ? (
-                        <>
-                          <button
-                            disabled={isApproved}
-                            onClick={() => handleShiftChange(date, '08:00-17:00')}
-                            className={cn(
-                              "w-full px-2 py-3 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1",
-                              currentShift === '08:00-17:00' 
-                                ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
-                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              isApproved && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <span>08:00 - 17:00</span>
-                            <span className="text-[10px] font-semibold opacity-70">Çalışacağım</span>
-                          </button>
-                          <button
-                            disabled={isApproved}
-                            onClick={() => handleShiftChange(date, 'off')}
-                            className={cn(
-                              "w-full px-2 py-3 rounded-lg border text-xs font-bold transition-all text-center flex flex-col items-center justify-center gap-1",
-                              currentShift === 'off' 
-                                ? "bg-rose-100 text-rose-800 border-rose-200" 
-                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              isApproved && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            İzinliyim
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            disabled={isApproved}
-                            onClick={() => handleShiftChange(date, '08:00-17:00')}
-                            className={cn(
-                              "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
-                              currentShift === '08:00-17:00' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              isApproved && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <span>08:00 - 17:00</span>
-                            <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">Normal Mesai</span>
-                          </button>
-                          
-                          <button
-                            disabled={isApproved || (full11to20Dates.has(dateStr) && currentShift !== '11:00-20:00')}
-                            onClick={() => handleShiftChange(date, '11:00-20:00')}
-                            className={cn(
-                              "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
-                              currentShift === '11:00-20:00' ? "bg-sky-100 text-sky-800 border-sky-300" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              (isApproved || (full11to20Dates.has(dateStr) && currentShift !== '11:00-20:00')) && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <span>11:00 - 20:00</span>
-                            <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">Geç Mesai</span>
-                          </button>
-
-                          {user.role !== 'fixed' && (
-                            <button
-                              disabled={isApproved}
-                              onClick={() => handleShiftChange(date, '08:00-20:00')}
-                              className={cn(
-                                "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 relative overflow-hidden",
-                                currentShift === '08:00-20:00' ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                                isApproved && "opacity-50 cursor-not-allowed"
-                              )}
-                            >
-                              <span>08:00 - 20:00</span>
-                              <span className="text-[9px] font-semibold opacity-70 uppercase tracking-tight">+3 Saat Ekstra</span>
-                            </button>
-                          )}
-
-                          <button
-                            disabled={isApproved}
-                            onClick={() => handleShiftChange(date, 'off')}
-                            className={cn(
-                              "w-full px-2 py-2.5 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5",
-                              currentShift === 'off' ? "bg-rose-100 text-rose-800 border-rose-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm",
-                              isApproved && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <span>İzinli (Off)</span>
-                          </button>
-                        </>
-                      )}
-
-                      {isApproved && (
-                        <div className="mt-2 pt-2 border-t border-slate-100">
-                          <button
-                            onClick={() => { setSwapDate(dateStr); setSwapModalOpen(true); }}
-                            className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded border border-indigo-200 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors"
-                          >
-                            <ArrowLeftRight className="w-3 h-3" />
-                            Takas Teklif Et
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <DayCard
+                    key={dateStr}
+                    date={date}
+                    dateStr={dateStr}
+                    isSaturday={isSaturday}
+                    currentShift={currentShift}
+                    isEren={isEren}
+                    isApproved={isApproved}
+                    is11to20Full={full11to20Dates.has(dateStr)}
+                    userRole={user.role}
+                    onShiftChange={handleShiftChange}
+                    onSwapClick={handleSwapClick}
+                  />
                 );
               })}
             </div>

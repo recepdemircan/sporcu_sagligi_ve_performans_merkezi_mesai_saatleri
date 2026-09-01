@@ -5,7 +5,8 @@ import {
   setDoc, 
   query, 
   where,
-  updateDoc
+  updateDoc,
+  limit
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { ShiftRequest, SwapRequest } from '../types';
@@ -57,7 +58,8 @@ export const api = {
     try {
       const q = query(
         collection(db, path),
-        where('weekId', '==', weekId)
+        where('weekId', '==', weekId),
+        
       );
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => {
@@ -153,7 +155,7 @@ export const api = {
 
   async getLogo(): Promise<string | null> {
     try {
-      const q = query(collection(db, 'settings'), where('id', '==', 'logo'));
+      const q = query(collection(db, 'settings'), where('id', '==', 'logo'), );
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         return snapshot.docs[0].data().base64 || null;
