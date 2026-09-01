@@ -4,11 +4,10 @@ import { USERS } from '../lib/constants';
 import { api } from '../lib/api';
 import { addDays, startOfWeek, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Calendar, CheckCircle, XCircle, Download, RotateCcw, AlertTriangle, CalendarDays } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Download, RotateCcw, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
-import { authenticateGoogleCalendar, syncShiftsToCalendar } from '../lib/calendar';
 import { useLogo } from '../lib/useLogo';
 
 interface ManagerDashboardProps {
@@ -28,7 +27,6 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
   
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncingCalendar, setSyncingCalendar] = useState(false);
   const { logo, updateLogo } = useLogo();
   const printRef = useRef(null);
 
@@ -42,31 +40,6 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
       }
     `
   });
-
-  const handleCalendarSync = async () => {
-    try {
-      setSyncingCalendar(true);
-      const token = await authenticateGoogleCalendar();
-      const approvedRequests = requests.filter(r => r.status === 'approved');
-      
-      if (approvedRequests.length === 0) {
-        toast.error('Takvime eklenecek onaylı mesai bulunamadı.');
-        setSyncingCalendar(false);
-        return;
-      }
-
-      toast.loading('Takvime eşitleniyor...', { id: 'calendar-sync' });
-      
-      const count = await syncShiftsToCalendar(token, approvedRequests);
-      
-      toast.success(`${count} mesai Google Takvim'e eklendi!`, { id: 'calendar-sync' });
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Google Takvim eşitlemesi başarısız oldu.', { id: 'calendar-sync' });
-    } finally {
-      setSyncingCalendar(false);
-    }
-  };
 
   const loadData = async () => {
     try {
@@ -199,17 +172,8 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
             <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
           </label>
           <button 
-            onClick={handleCalendarSync}
-            disabled={syncingCalendar}
-            className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 shadow-sm hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
-          >
-            <CalendarDays className="w-4 h-4" />
-            <span>{syncingCalendar ? 'Eşitleniyor...' : 'Takvime Aktar'}</span>
-          </button>
-          
-          <button 
             onClick={handleManualBackup}
-            className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors w-full sm:w-auto justify-center"
           >
             <Download className="w-4 h-4" />
             <span>Yedek Al</span>
