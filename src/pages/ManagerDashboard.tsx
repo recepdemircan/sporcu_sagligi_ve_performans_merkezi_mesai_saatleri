@@ -18,7 +18,7 @@ const DEPARTMENTS: { role: UserRole; name: string }[] = [
   { role: 'athletic', name: 'Atletik Performans Departmanı' },
   { role: 'health', name: 'Sağlık ve Destek Departmanı' },
   { role: 'senior', name: 'Kıdemli Uzmanlar' },
-  { role: 'fixed', name: 'Sabit Vardiya Uzmanları' }
+  { role: 'fixed', name: 'Fizyoterapi (Sabah / Akşam Ekibi)' }
 ];
 
 export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {

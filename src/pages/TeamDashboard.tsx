@@ -57,7 +57,7 @@ const DayCard = React.memo(({
               currentShift === 'off' ? "bg-rose-100 text-rose-800 border-rose-200" : "bg-sky-100 text-sky-800 border-sky-200"
             )}>
               <span>{currentShift === 'off' ? 'İZİNLİ' : currentShift}</span>
-              <span className="text-[9px] font-semibold opacity-70">Sabit Vardiya</span>
+              <span className="text-[9px] font-semibold opacity-70">Sabit Mesai</span>
             </div>
         ) : isSaturday ? (
           <>
@@ -505,7 +505,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
                   className="w-full bg-indigo-600 text-white rounded-lg px-4 py-3 text-xs font-bold shadow-md hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   <Send className="w-4 h-4" />
-                  {saving ? 'Gönderiliyor...' : isEren ? 'Sabit Vardiyayı Onaya Gönder' : 'Talebi Gönder'}
+                  {saving ? 'Gönderiliyor...' : isEren ? 'Talebi Gönder' : 'Talebi Gönder'}
                 </button>
               </div>
             )}

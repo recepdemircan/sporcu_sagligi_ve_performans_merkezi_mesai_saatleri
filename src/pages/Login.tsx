@@ -83,7 +83,7 @@ export function Login({ onLogin }: LoginProps) {
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </optgroup>
-              <optgroup label="Sabit Vardiya Uzmanları">
+              <optgroup label="Fizyoterapi (Sabah / Akşam Ekibi)">
                 {USERS.filter(u => u.role === 'fixed').map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
