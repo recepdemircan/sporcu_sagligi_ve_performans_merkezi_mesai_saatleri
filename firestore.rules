@@ -46,7 +46,7 @@ service cloud.firestore {
                     && isValidShiftRequest(incoming()) 
                     && incoming().userId == existing().userId
                     && incoming().weekId == existing().weekId;
-      allow delete: if false;
+      allow delete: if true;
     }
   }
 }
