@@ -220,7 +220,7 @@ export function TeamDashboard({ user, onLogout }: TeamDashboardProps) {
         }
       }
     } catch (err) {
-      toast.error('Veriler yüklenirken bir hata oluştu');
+      toast.error('Hata: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }

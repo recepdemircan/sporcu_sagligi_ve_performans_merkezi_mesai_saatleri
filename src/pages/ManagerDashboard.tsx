@@ -46,7 +46,7 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
       const data = await api.getShiftRequests(weekId);
       setRequests(data);
     } catch (error) {
-      toast.error('Veriler yüklenirken hata oluştu');
+      toast.error('Veriler yüklenirken hata oluştu: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setLoading(false);
     }
