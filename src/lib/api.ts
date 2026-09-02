@@ -1,195 +1,100 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  setDoc, 
-  query, 
-  where,
-  updateDoc,
-  writeBatch,
-  limit
-} from 'firebase/firestore';
-import { db } from './firebase';
 import { ShiftRequest, SwapRequest } from '../types';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: null
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export const api = {
   async saveShiftRequest(request: ShiftRequest): Promise<void> {
-    const path = 'shiftRequests';
-    try {
-      const requestRef = doc(collection(db, path), request.id);
-      await setDoc(requestRef, request);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
-    }
+    const res = await fetch("/api/shift-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request)
+    });
+    if (!res.ok) throw new Error("Failed to save shift request");
   },
 
   async getShiftRequests(weekId: string): Promise<ShiftRequest[]> {
-    const path = 'shiftRequests';
-    try {
-      const q = query(
-        collection(db, path),
-        where('weekId', '==', weekId),
-        
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data() as ShiftRequest;
-        return {
-          ...data,
-          shifts: data.shifts || []
-        };
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, path);
-      return [];
-    }
+    const res = await fetch(`/api/shift-requests?weekId=${encodeURIComponent(weekId)}`);
+    if (!res.ok) throw new Error("Failed to get shift requests");
+    return res.json();
   },
   
   async updateShiftRequestStatus(id: string, status: 'approved' | 'rejected', weekId: string): Promise<void> {
-    const path = 'shiftRequests';
-    try {
-      const requestRef = doc(db, path, id);
-      await updateDoc(requestRef, { status });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `${path}/${id}`);
-    }
+    const res = await fetch(`/api/shift-requests/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error("Failed to update shift request status");
   },
 
   async clearWeekRequests(weekId: string): Promise<void> {
-    const path = 'shiftRequests';
-    try {
-      const q = query(collection(db, path), where('weekId', '==', weekId));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
-    }
+    const res = await fetch(`/api/shift-requests/week/${encodeURIComponent(weekId)}`, {
+      method: "DELETE"
+    });
+    if (!res.ok) throw new Error("Failed to clear week requests");
   },
 
   async createSwapRequest(swap: SwapRequest): Promise<void> {
-    const path = 'swapRequests';
-    try {
-      const ref = doc(collection(db, path), swap.id);
-      await setDoc(ref, swap);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
-    }
+    const res = await fetch("/api/swap-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(swap)
+    });
+    if (!res.ok) throw new Error("Failed to create swap request");
   },
 
   async getSwapRequests(userId: string, weekId: string): Promise<SwapRequest[]> {
-    const path = 'swapRequests';
-    try {
-      const qSender = query(collection(db, path), where('senderUserId', '==', userId), where('weekId', '==', weekId));
-      const qReceiver = query(collection(db, path), where('receiverUserId', '==', userId), where('weekId', '==', weekId));
-      
-      const [sSnap, rSnap] = await Promise.all([getDocs(qSender), getDocs(qReceiver)]);
-      
-      const reqs: SwapRequest[] = [];
-      sSnap.forEach(d => reqs.push(d.data() as SwapRequest));
-      rSnap.forEach(d => {
-        const data = d.data() as SwapRequest;
-        if (!reqs.find(r => r.id === data.id)) reqs.push(data);
-      });
-      return reqs;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, path);
-      return [];
-    }
+    const res = await fetch(`/api/swap-requests?weekId=${encodeURIComponent(weekId)}`);
+    if (!res.ok) throw new Error("Failed to get swap requests");
+    const reqs: SwapRequest[] = await res.json();
+    return reqs.filter(r => r.senderUserId === userId || r.receiverUserId === userId);
   },
 
   async respondToSwap(swap: SwapRequest, response: 'accepted' | 'rejected'): Promise<void> {
-    const path = 'swapRequests';
-    try {
-      const swapRef = doc(db, path, swap.id);
-      if (response === 'rejected') {
-        await updateDoc(swapRef, { status: 'rejected' });
-        return;
-      }
-
-      // If accepted, we must swap the shifts
-      const sReqs = await this.getShiftRequests(swap.weekId);
-      const senderReq = sReqs.find(r => r.userId === swap.senderUserId);
-      const receiverReq = sReqs.find(r => r.userId === swap.receiverUserId);
-
-      if (!senderReq || !receiverReq) throw new Error('İlgili haftaya ait onaylanmış talep bulunamadı.');
-
-      const senderShiftIdx = senderReq.shifts.findIndex(s => s.date === swap.date);
-      const receiverShiftIdx = receiverReq.shifts.findIndex(s => s.date === swap.date);
-
-      const senderShiftType = senderShiftIdx >= 0 ? senderReq.shifts[senderShiftIdx].shiftType : 'off';
-      const receiverShiftType = receiverShiftIdx >= 0 ? receiverReq.shifts[receiverShiftIdx].shiftType : 'off';
-
-      if (senderShiftIdx >= 0) senderReq.shifts[senderShiftIdx].shiftType = receiverShiftType;
-      else senderReq.shifts.push({ date: swap.date, shiftType: receiverShiftType });
-
-      if (receiverShiftIdx >= 0) receiverReq.shifts[receiverShiftIdx].shiftType = senderShiftType;
-      else receiverReq.shifts.push({ date: swap.date, shiftType: senderShiftType });
-
-      await this.saveShiftRequest(senderReq);
-      await this.saveShiftRequest(receiverReq);
-      
-      await updateDoc(swapRef, { status: 'accepted' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `${path}/${swap.id}`);
+    if (response === 'rejected') {
+      const res = await fetch(`/api/swap-requests/${swap.id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: 'rejected' })
+      });
+      if (!res.ok) throw new Error("Failed to reject swap");
+      return;
     }
+
+    // If accepted, we must swap the shifts
+    const sReqs = await this.getShiftRequests(swap.weekId);
+    const senderReq = sReqs.find(r => r.userId === swap.senderUserId);
+    const receiverReq = sReqs.find(r => r.userId === swap.receiverUserId);
+
+    if (!senderReq || !receiverReq) throw new Error('İlgili haftaya ait onaylanmış talep bulunamadı.');
+
+    const senderShiftIdx = senderReq.shifts.findIndex(s => s.date === swap.date);
+    const receiverShiftIdx = receiverReq.shifts.findIndex(s => s.date === swap.date);
+
+    const senderShiftType = senderShiftIdx >= 0 ? senderReq.shifts[senderShiftIdx].shiftType : 'off';
+    const receiverShiftType = receiverShiftIdx >= 0 ? receiverReq.shifts[receiverShiftIdx].shiftType : 'off';
+
+    if (senderShiftIdx >= 0) senderReq.shifts[senderShiftIdx].shiftType = receiverShiftType;
+    else senderReq.shifts.push({ date: swap.date, shiftType: receiverShiftType });
+
+    if (receiverShiftIdx >= 0) receiverReq.shifts[receiverShiftIdx].shiftType = senderShiftType;
+    else receiverReq.shifts.push({ date: swap.date, shiftType: senderShiftType });
+
+    await this.saveShiftRequest(senderReq);
+    await this.saveShiftRequest(receiverReq);
+    
+    const res = await fetch(`/api/swap-requests/${swap.id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: 'accepted' })
+    });
+    if (!res.ok) throw new Error("Failed to accept swap");
   },
 
   async getLogo(): Promise<string | null> {
-    try {
-      const q = query(collection(db, 'settings'), where('id', '==', 'logo'));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return snapshot.docs[0].data().base64 || null;
-      }
-      return null;
-    } catch (error) {
-      console.error('Logo alınamadı', error);
-      return null;
-    }
+    return null;
   },
 
   async saveLogo(base64: string): Promise<void> {
-    try {
-      const logoRef = doc(db, 'settings', 'logo');
-      await setDoc(logoRef, { id: 'logo', base64 });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'settings/logo');
-    }
+    // Legacy support, now we don't save logo dynamically
   }
 };
 
