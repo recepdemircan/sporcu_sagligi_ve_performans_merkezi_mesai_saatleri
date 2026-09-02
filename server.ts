@@ -3,7 +3,7 @@ import path from "path";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/db";
-import { shiftRequests, swapRequests } from "./src/db/schema";
+import { shiftRequests, swapRequests, settings } from "./src/db/schema";
 import { eq } from "drizzle-orm";
 
 async function startServer() {
@@ -101,6 +101,33 @@ async function startServer() {
       const { id } = req.params;
       const { status } = req.body;
       await db.update(swapRequests).set({ status }).where(eq(swapRequests.id, id));
+      res.json({ success: true });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.get("/api/settings/logo", async (req, res) => {
+    try {
+      const result = await db.query.settings.findFirst({
+        where: eq(settings.id, "logo"),
+      });
+      res.json({ logo: result?.value || null });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/settings/logo", async (req, res) => {
+    try {
+      const { logo } = req.body;
+      await db.insert(settings).values({ id: "logo", value: logo })
+        .onConflictDoUpdate({
+          target: settings.id,
+          set: { value: logo }
+        });
       res.json({ success: true });
     } catch (e) {
       console.error(e);

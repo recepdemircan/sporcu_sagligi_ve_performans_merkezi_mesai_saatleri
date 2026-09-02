@@ -90,11 +90,18 @@ export const api = {
   },
 
   async getLogo(): Promise<string | null> {
-    return null;
+    const res = await fetch("/api/settings/logo");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.logo;
   },
 
   async saveLogo(base64: string): Promise<void> {
-    // Legacy support, now we don't save logo dynamically
+    await fetch("/api/settings/logo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logo: base64 })
+    });
   }
 };
 

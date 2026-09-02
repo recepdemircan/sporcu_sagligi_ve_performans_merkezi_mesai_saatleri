@@ -1,4 +1,4 @@
-import { pgTable, varchar, jsonb, bigint } from "drizzle-orm/pg-core";
+import { pgTable, varchar, jsonb, bigint, text } from "drizzle-orm/pg-core";
 
 export const shiftRequests = pgTable("shift_requests", {
   id: varchar("id", { length: 255 }).primaryKey(),
@@ -18,4 +18,9 @@ export const swapRequests = pgTable("swap_requests", {
   receiverUserId: varchar("receiver_user_id", { length: 255 }).notNull(),
   status: varchar("status", { length: 50 }).notNull().default("pending"),
   createdAt: bigint("created_at", { mode: 'number' }).notNull(),
+});
+
+export const settings = pgTable("settings", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  value: text("value"),
 });

@@ -79,6 +79,26 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
     toast.success('Yedek indirildi');
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit for postgres
+        toast.error('Logo boyutu 1MB\'dan küçük olmalıdır.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          await updateLogo(reader.result as string);
+          toast.success('Kurum logosu başarıyla güncellendi!');
+        } catch(err) {
+          toast.error('Logo güncellenirken hata oluştu');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const weekDays = Array.from({ length: 6 }).map((_, i) => addDays(nextWeekStart, i));
 
   const getShiftColor = (shift: string) => {
@@ -159,6 +179,10 @@ export function ManagerDashboard({ onLogout }: ManagerDashboardProps) {
           </div>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full sm:w-auto">
+          <label className="flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer w-full sm:w-auto text-center">
+            Logo Yükle
+            <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+          </label>
           <button 
             onClick={handleManualBackup}
             className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold transition-colors w-full sm:w-auto justify-center"
